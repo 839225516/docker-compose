@@ -1,0 +1,62 @@
+version: '2.2'
+
+services:
+
+  elasticsearch01:
+    image: registry.jlpay.io/elasticsearch/elasticsearch/elasticsearch:7.2.0
+    container_name: elasticsearch01
+    environment:
+      #- node.name=elasticsearch01
+      #- discovery.seed_hosts=elasticsearch02
+      #- cluster.initial_master_nodes=elasticsearch01,elasticsearch02
+      #- cluster.name=docker-cluster
+      - ELASTIC_PASSWORD=changeme
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms4096m -Xmx4096m"
+    volumes:
+      - /etc/localtime:/etc/localtime
+      - ./config/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+      - /data/es-data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    networks:
+      - elk
+
+  logstash:
+    image: registry.jlpay.io/elasticsearch/logstash:7.2.0
+    container_name: logstash
+    volumes:
+      - ./config/logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+      - ./config/logstash/pipeline:/usr/share/logstash/pipeline:ro
+    ports:
+      - "5000:5000"
+      - "9600:9600"
+    environment:
+      LS_JAVA_OPTS: "-Xmx1024m -Xms1024m"
+    networks:
+      - elk
+    depends_on:
+      - elasticsearch01
+
+  kibana:
+    image: registry.jlpay.io/elasticsearch/kibana:7.2.0
+    container_name: kibana
+    volumes:
+      - /etc/localtime:/etc/localtime
+      - ./config/kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
+    ports:
+      - "5601:5601"
+    networks:
+      - elk
+    depends_on:
+      - elasticsearch01
+
+networks:
+
+  elk:
+    driver: bridge
